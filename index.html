@@ -96,9 +96,9 @@
     <div class="main-card w-full max-w-4xl rounded-3xl p-6 md:p-10 mt-6 mb-6">
         <!-- TÍTULO MÁS LLAMATIVO: Cyber Music -->
         <h1 class="text-5xl font-black text-center mb-6 text-primary-vibrant tracking-wider">
-            <span class="inline-block transform rotate-[-5deg] text-pink-500">🎧</span> 
+            <span class="inline-block transform rotate-[-5deg] text-pink-500"></span> 
             CYBER MUSIC 
-            <span class="inline-block transform rotate-[5deg] text-yellow-500">🎶</span>
+            <span class="inline-block transform rotate-[5deg] text-yellow-500"></span>
         </h1>
         <p class="text-center text-gray-600 mb-8 font-semibold text-lg">
             Control de 6 Estaciones de Cómputo y Cobro
@@ -114,7 +114,7 @@
 
         <!-- Sección de Configuración de Precios -->
         <div id="price-config" class="bg-primary-pastel p-4 rounded-xl mb-8 border-2 border-primary-vibrant/50">
-            <h2 class="text-lg font-bold mb-3 text-gray-800">💸 Tarifas (MXN)</h2>
+            <h2 class="text-lg font-bold mb-3 text-gray-800"> Tarifas (MXN)</h2>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label for="pricePerMinute" class="block text-sm font-medium text-gray-700">Precio/Minuto ($)</label>
@@ -138,19 +138,19 @@
                 <div class="space-y-4">
                     <!-- Hora de Inicio -->
                     <div>
-                        <label for="startTime" class="block text-md font-semibold text-gray-700">📅 Hora de Inicio (Ocupada desde)</label>
+                        <label for="startTime" class="block text-md font-semibold text-gray-700"> Hora de Inicio (Ocupada desde)</label>
                         <input type="datetime-local" id="startTime" class="mt-1 w-full p-3 rounded-lg input-style" onchange="updateSessionData()">
                     </div>
                     
                     <!-- Hora de Fin -->
                     <div>
-                        <label for="endTime" class="block text-md font-semibold text-gray-700">🏁 Hora de Fin (Actual/Corte)</label>
+                        <label for="endTime" class="block text-md font-semibold text-gray-700"> Hora de Fin (Actual/Corte)</label>
                         <input type="datetime-local" id="endTime" class="mt-1 w-full p-3 rounded-lg input-style" onchange="updateSessionData()">
                     </div>
 
                     <!-- Número de Copias -->
                     <div>
-                        <label for="numCopies" class="block text-md font-semibold text-gray-700">🖨️ Cantidad de Copias/Impresiones</label>
+                        <label for="numCopies" class="block text-md font-semibold text-gray-700"> Cantidad de Copias/Impresiones</label>
                         <input type="number" id="numCopies" value="0" min="0" class="mt-1 w-full p-3 rounded-lg input-style" oninput="updateSessionData()">
                     </div>
                 </div>
@@ -158,7 +158,7 @@
                 <!-- Columna de Resultados -->
                 <div>
                     <div id="results" class="result-panel space-y-3 p-5 rounded-2xl shadow-lg">
-                        <h3 class="text-xl font-bold text-primary-vibrant border-b-2 border-pink-300 pb-2">🌟 Detalle de Cobro</h3>
+                        <h3 class="text-xl font-bold text-primary-vibrant border-b-2 border-pink-300 pb-2"> Detalle de Cobro</h3>
 
                         <div class="flex justify-between">
                             <span class="text-gray-600 font-medium">Tiempo de Uso:</span>
@@ -190,7 +190,7 @@
             
             <!-- Mensaje de Error -->
             <div id="errorMessage" class="hidden mt-4 p-3 text-sm font-extrabold text-red-800 bg-red-200 border border-red-400 rounded-xl">
-                ⚠️ ¡Error! La Hora de Fin debe ser posterior a la Hora de Inicio.
+                ¡Error! La Hora de Fin debe ser posterior a la Hora de Inicio.
             </div>
         </div>
 
@@ -284,7 +284,7 @@
             
             if (startTime && endTime) {
                 if (endTime <= startTime) {
-                    errorMessage = '⚠️ ¡Error! La Hora de Fin debe ser posterior a la Hora de Inicio.';
+                    errorMessage = ' ¡Error! La Hora de Fin debe ser posterior a la Hora de Inicio.';
                 } else {
                     const timeDifferenceMs = endTime.getTime() - startTime.getTime();
                     totalMinutes = timeDifferenceMs / (1000 * 60);
@@ -292,7 +292,476 @@
                 }
             } else if (machine.status === 'Ocupada' && !startTime) {
                  // Esto no debería pasar si se inicia correctamente, pero como fallback
-                errorMessage = '⚠️ Sesión iniciada sin hora de inicio válida.';
+                errorMessage = ' Sesión iniciada sin hora de inicio válida.';
+            }
+
+            costByCopies = numCopies * pricePerCopy;
+            totalCharge = costByTime + costByCopies;
+
+            // Actualizar el objeto de la máquina con los resultados
+            machine.totalMinutes = totalMinutes;
+            machine.timeCost = costByTime;
+            machine.copiesCost = costByCopies;
+            machine.totalCharge = totalCharge;
+
+            return { machine, errorMessage };
+        }
+
+        // --- Lógica de Interacción ---
+
+        function handleMachineClick(id) {
+            const machine = machines.find(m => m.id === id);
+
+            if (machine.status === 'Libre') {
+                // Si está Libre, iniciar sesión
+                startNewSession(id);
+            } else {
+                // Si está Ocupada, solo seleccionar para ver/calcular el cobro
+                selectMachine(id);
+            }
+        }
+
+        function startNewSession(id) {
+            const machine = machines.find(m => m.id === id);
+            const now = new Date();
+            
+            // 1. Establecer hora de inicio y estado Ocupada
+            machine.startTime = now;
+            machine.endTime = now; // La hora de fin es la actual al inicio
+            machine.numCopies = 0;
+            machine.status = 'Ocupada';
+            
+            // 2. Recalcular y seleccionar
+            calculateCharge(machine);
+            selectMachine(id);
+        }
+
+        function selectMachine(id) {
+            selectedMachineId = id;
+            const machine = machines.find(m => m.id === id);
+
+            // 1. Mostrar el formulario y actualizar el título
+            document.getElementById('sessionForm').classList.remove('hidden');
+            document.getElementById('selectedMachineIdDisplay').textContent = id;
+            
+            // 2. Cargar los datos de la máquina seleccionada en los inputs
+            document.getElementById('startTime').value = machine.startTime ? formatDateTime(machine.startTime) : '';
+            // Si la máquina está Ocupada, su hora de fin debe ser la actual para el cálculo
+            const endTimeValue = (machine.status === 'Ocupada' && !machine.endTime) ? formatDateTime(new Date()) : (machine.endTime ? formatDateTime(machine.endTime) : formatDateTime(new Date()));
+            document.getElementById('endTime').value = endTimeValue;
+
+            document.getElementById('numCopies').value = machine.numCopies;
+
+            // 3. Forzar el cálculo para actualizar los detalles con los nuevos valores de endTime
+            updateSessionData();
+            renderMachines(); // Actualizar el resaltado en los botones
+        }
+        
+        function updateSessionData() {
+            const machine = machines.find(m => m.id === selectedMachineId);
+            
+            // Recoger datos de los inputs
+            const startTimeValue = document.getElementById('startTime').value;
+            const endTimeValue = document.getElementById('endTime').value;
+            const numCopiesValue = parseFloat(document.getElementById('numCopies').value) || 0;
+
+            // Actualizar el objeto de la máquina
+            machine.startTime = startTimeValue ? new Date(startTimeValue) : null;
+            machine.endTime = endTimeValue ? new Date(endTimeValue) : null;
+            machine.numCopies = Math.max(0, numCopiesValue);
+            
+            // Si la hora de inicio es borrada manualmente, la máquina pasa a Libre
+            if (!machine.startTime) {
+                 machine.status = 'Libre';
+            } else if (machine.status === 'Libre') {
+                 // Si le agregan una hora de inicio manualmente, se marca como Ocupada
+                 machine.status = 'Ocupada';
+            }
+
+
+            // Recalcular y renderizar
+            const { machine: updatedMachine, errorMessage } = calculateCharge(machine);
+            renderSessionData(updatedMachine, errorMessage);
+            renderMachines(); // Actualizar el estado en los botones (incluyendo el total si está ocupada)
+        }
+
+        function renderSessionData(machine, errorMessage = '') {
+            const resultsDiv = document.getElementById('results');
+            const errorDiv = document.getElementById('errorMessage');
+            const endButton = document.getElementById('endSessionBtn');
+
+            // 1. Manejo de Errores y deshabilitación del botón de finalizar
+            if (errorMessage || machine.status === 'Libre') {
+                errorDiv.textContent = errorMessage || 'Máquina Libre. Inicia una sesión primero.';
+                errorDiv.classList.remove('hidden');
+                resultsDiv.classList.add('opacity-50'); 
+                endButton.disabled = true;
+                endButton.classList.remove('bg-red-400', 'hover:bg-red-500');
+                endButton.classList.add('bg-gray-300', 'cursor-not-allowed');
+
+            } else {
+                errorDiv.classList.add('hidden');
+                resultsDiv.classList.remove('opacity-50');
+                endButton.disabled = false;
+                endButton.classList.remove('bg-gray-300', 'cursor-not-allowed');
+                endButton.classList.add('bg-red-400', 'hover:bg-red-500');
+            }
+            
+            // 2. Mostrar resultados (incluso si la máquina está libre, muestra el último cálculo/cero)
+            document.getElementById('totalTime').textContent = ${machine.totalMinutes.toFixed(1)} min; 
+            document.getElementById('timeCost').textContent = currencyFormatter.format(machine.timeCost);
+            document.getElementById('copiesCost').textContent = currencyFormatter.format(machine.copiesCost);
+            document.getElementById('totalCharge').textContent = currencyFormatter.format(machine.totalCharge);
+        }
+
+        function renderMachines() {
+            const container = document.getElementById('machinesContainer');
+            container.innerHTML = '';
+            machines.forEach(machine => {
+                const button = document.createElement('div');
+                button.className = `machine-button flex flex-col items-center justify-center p-3 rounded-xl shadow-md font-bold transition-all ${
+                    machine.status === 'Ocupada' ? 'machine-status-ocupada' : 'machine-status-libre'
+                } ${machine.id === selectedMachineId ? 'selected' : ''}`;
+                
+                button.onclick = () => handleMachineClick(machine.id);
+
+                button.innerHTML = `
+                    <span class="text-xl">Estación ${machine.id}</span>
+                    <span class="text-sm font-semibold mt-1">${machine.status}</span>
+                    ${machine.status === 'Ocupada' ? 
+                        <span class="text-xs font-bold mt-1">TOTAL: ${currencyFormatter.format(machine.totalCharge)}</span> : ''
+                    }
+                `;
+                container.appendChild(button);
+            });
+        }
+        
+        function updateAllMachineCharges() {
+            machines.forEach(machine => {
+                if (machine.status === 'Ocupada') {
+                    // Si está ocupada, actualizamos la hora de fin al instante actual para un cálculo preciso del tiempo en curso
+                    machine.endTime = new Date();
+                }
+                calculateCharge(machine);
+            });
+            // Si la máquina seleccionada está ocupada, el panel debe reflejar el último cálculo
+            const currentMachine = machines.find(m => m.id === selectedMachineId);
+            if(currentMachine && currentMachine.status === 'Ocupada'){
+                renderSessionData(currentMachine); 
+            }
+            renderMachines(); 
+        }
+
+        function endSession() {
+            const machine = machines.find(m => m.id === selectedMachineId);
+            
+            // 1. Resetear el estado de la máquina
+            const newMachineState = createMachineState(machine.id);
+            const index = machines.findIndex(m => m.id === machine.id);
+            if (index !== -1) {
+                machines[index] = newMachineState;
+            }
+
+            // 2. Seleccionar la máquina recién reiniciada
+            selectMachine(machine.id);
+        }
+
+        // Intervalo para actualizar el estado de las máquinas cada 10 segundos
+  <!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Music - Simulador de Cobro</title>
+    <!-- Carga de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configuración de fuentes y colores personalizados -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Fondo Dinámico con Colores Pastel */
+            background: linear-gradient(-45deg, #FFD1DC, #B0E0E6, #C3E4CD, #F0E68C);
+            background-size: 400% 400%;
+            animation: gradient-animation 15s ease infinite;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .main-card {
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); /* Sombra más pronunciada */
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+
+        /* Colores Pastel y Vibrantes para el UI */
+        .text-primary-vibrant { color: #8A2BE2; } /* Azul violeta vibrante */
+        .bg-primary-pastel { background-color: #B0E0E6; } /* Azul claro pastel */
+        
+        .input-style {
+            transition: all 0.3s ease;
+            border: 2px solid #E0FFFF;
+            background-color: #F8F8FF;
+            color: #4A4A4A;
+        }
+        .input-style:focus {
+            border-color: #FF69B4;
+            box-shadow: 0 0 0 4px rgba(255, 105, 180, 0.25);
+        }
+
+        .result-panel {
+            background-color: #FFF0F5; /* Fondo Rosa lavanda claro para resultados */
+            border-left: 6px solid #FF69B4; /* Borde izquierdo rosa fuerte */
+        }
+        
+        .total-charge-text {
+            color: #8A2BE2; /* Azul violeta vibrante */
+            text-shadow: 1px 1px 3px rgba(138, 43, 226, 0.5); /* Sombra de texto llamativa */
+        }
+        
+        /* Estilos de botones de máquina */
+        .machine-button {
+            transition: all 0.2s;
+            cursor: pointer;
+            user-select: none;
+            border: 2px solid transparent;
+            min-height: 80px;
+        }
+
+        .machine-button:hover:not(.selected) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); /* Sombra más notoria */
+        }
+
+        .machine-status-ocupada {
+            background-color: #FFD1DC; /* Rosa pastel */
+            color: #D6336C;
+        }
+        
+        .machine-status-libre {
+            background-color: #C3E4CD; /* Verde menta pastel */
+            color: #0E791F;
+        }
+
+        .machine-button.selected {
+            border-color: #8A2BE2;
+            box-shadow: 0 0 0 5px rgba(138, 43, 226, 0.7); /* Borde más grueso y vibrante */
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body onload="initApp()">
+
+    <div class="main-card w-full max-w-4xl rounded-3xl p-6 md:p-10 mt-6 mb-6">
+        <!-- TÍTULO MÁS LLAMATIVO: Cyber Music -->
+        <h1 class="text-5xl font-black text-center mb-6 text-primary-vibrant tracking-wider">
+            <span class="inline-block transform rotate-[-5deg] text-pink-500"></span> 
+            CYBER MUSIC 
+            <span class="inline-block transform rotate-[5deg] text-yellow-500"></span>
+        </h1>
+        <p class="text-center text-gray-600 mb-8 font-semibold text-lg">
+            Control de 6 Estaciones de Cómputo y Cobro
+        </p>
+
+        <!-- PANELES DE CONTROL (MÁQUINAS) -->
+        <div class="mb-8">
+            <h2 class="text-xl font-bold mb-3 text-gray-800">Estado de Estaciones (1 - 6)</h2>
+            <div id="machinesContainer" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                <!-- Los botones de máquinas se renderizarán aquí -->
+            </div>
+        </div>
+
+        <!-- Sección de Configuración de Precios -->
+        <div id="price-config" class="bg-primary-pastel p-4 rounded-xl mb-8 border-2 border-primary-vibrant/50">
+            <h2 class="text-lg font-bold mb-3 text-gray-800"> Tarifas (MXN)</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="pricePerMinute" class="block text-sm font-medium text-gray-700">Precio/Minuto ($)</label>
+                    <input type="number" id="pricePerMinute" value="0.50" step="0.01" class="mt-1 w-full p-2 rounded-lg input-style" onchange="updateAllMachineCharges()">
+                </div>
+                <div>
+                    <label for="pricePerCopy" class="block text-sm font-medium text-gray-700">Precio/Copia ($)</label>
+                    <input type="number" id="pricePerCopy" value="1.50" step="0.01" class="mt-1 w-full p-2 rounded-lg input-style" onchange="updateAllMachineCharges()">
+                </div>
+            </div>
+        </div>
+
+        <!-- FORMULARIO DE SESIÓN Y CÁLCULO -->
+        <div id="sessionForm" class="hidden">
+            <h2 class="text-2xl font-extrabold text-primary-vibrant mb-4">
+                Estación <span id="selectedMachineIdDisplay" class="text-4xl">1</span>
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <!-- Columna de Inputs -->
+                <div class="space-y-4">
+                    <!-- Hora de Inicio -->
+                    <div>
+                        <label for="startTime" class="block text-md font-semibold text-gray-700">Hora de Inicio (Ocupada desde)</label>
+                        <input type="datetime-local" id="startTime" class="mt-1 w-full p-3 rounded-lg input-style" onchange="updateSessionData()">
+                    </div>
+                    
+                    <!-- Hora de Fin -->
+                    <div>
+                        <label for="endTime" class="block text-md font-semibold text-gray-700"> Hora de Fin (Actual/Corte)</label>
+                        <input type="datetime-local" id="endTime" class="mt-1 w-full p-3 rounded-lg input-style" onchange="updateSessionData()">
+                    </div>
+
+                    <!-- Número de Copias -->
+                    <div>
+                        <label for="numCopies" class="block text-md font-semibold text-gray-700"> Cantidad de Copias/Impresiones</label>
+                        <input type="number" id="numCopies" value="0" min="0" class="mt-1 w-full p-3 rounded-lg input-style" oninput="updateSessionData()">
+                    </div>
+                </div>
+
+                <!-- Columna de Resultados -->
+                <div>
+                    <div id="results" class="result-panel space-y-3 p-5 rounded-2xl shadow-lg">
+                        <h3 class="text-xl font-bold text-primary-vibrant border-b-2 border-pink-300 pb-2"> Detalle de Cobro</h3>
+
+                        <div class="flex justify-between">
+                            <span class="text-gray-600 font-medium">Tiempo de Uso:</span>
+                            <span id="totalTime" class="font-semibold text-gray-800">0 min</span>
+                        </div>
+
+                        <div class="flex justify-between">
+                            <span class="text-gray-600 font-medium">Costo por Tiempo ($):</span>
+                            <span id="timeCost" class="font-semibold text-gray-800">$0.00</span>
+                        </div>
+
+                        <div class="flex justify-between">
+                            <span class="text-gray-600 font-medium">Costo por Copias ($):</span>
+                            <span id="copiesCost" class="font-semibold text-gray-800">$0.00</span>
+                        </div>
+
+                        <div class="pt-4 border-t-2 border-pink-300 mt-3 flex justify-between items-center">
+                            <span class="text-2xl font-extrabold text-gray-900">Total a Pagar:</span>
+                            <span id="totalCharge" class="text-4xl font-black total-charge-text">$0.00</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Botón de Finalizar y Reiniciar Sesión -->
+                    <button id="endSessionBtn" onclick="endSession()" class="mt-4 w-full p-3 bg-red-400 hover:bg-red-500 text-white font-bold rounded-lg shadow-md transition-all">
+                        FINALIZAR Sesión y Cobrar
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Mensaje de Error -->
+            <div id="errorMessage" class="hidden mt-4 p-3 text-sm font-extrabold text-red-800 bg-red-200 border border-red-400 rounded-xl">
+                 ¡Error! La Hora de Fin debe ser posterior a la Hora de Inicio.
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Array para almacenar el estado de las 6 máquinas
+        let machines = [];
+        let selectedMachineId = 1;
+        const NUM_MACHINES = 6;
+
+        // --- Funciones de Utilidad ---
+
+        // Función de formato de moneda (MXN)
+        const currencyFormatter = new Intl.NumberFormat('es-MX', {
+            style: 'currency',
+            currency: 'MXN', 
+            minimumFractionDigits: 2,
+        });
+
+        // Función para formatear Date a string compatible con datetime-local
+        const formatDateTime = (date) => {
+            if (!date) return '';
+            const pad = (n) => n < 10 ? '0' + n : n;
+            const year = date.getFullYear();
+            const month = pad(date.getMonth() + 1);
+            const day = pad(date.getDate());
+            const hours = pad(date.getHours());
+            const minutes = pad(date.getMinutes());
+            return ${year}-${month}-${day}T${hours}:${minutes};
+        };
+
+        // --- Lógica de Inicialización ---
+
+        function initApp() {
+            // Inicializar las 6 máquinas
+            for (let i = 1; i <= NUM_MACHINES; i++) {
+                machines.push(createMachineState(i));
+            }
+            // Simular una máquina ocupada al inicio
+            simulateInitialOccupied();
+            renderMachines();
+            selectMachine(selectedMachineId); 
+        }
+
+        function createMachineState(id) {
+            return {
+                id: id,
+                startTime: null,
+                endTime: null,
+                numCopies: 0,
+                totalMinutes: 0,
+                timeCost: 0,
+                copiesCost: 0,
+                totalCharge: 0,
+                status: 'Libre' // 'Libre' o 'Ocupada'
+            };
+        }
+        
+        // Simulación de máquina ocupada al cargar la página
+        function simulateInitialOccupied() {
+            const machine3 = machines.find(m => m.id === 3);
+            if (machine3) {
+                const now = new Date();
+                const start3 = new Date(now.getTime() - (20 * 60000)); // 20 minutos antes
+                
+                machine3.startTime = start3;
+                machine3.endTime = now;
+                machine3.numCopies = 12;
+                machine3.status = 'Ocupada';
+                calculateCharge(machine3);
+                selectedMachineId = 3; // Seleccionar la 3 al inicio para mostrar que está ocupada
+            }
+        }
+
+        // --- Lógica de Cálculo ---
+
+        function calculateCharge(machine) {
+            const pricePerMinute = parseFloat(document.getElementById('pricePerMinute').value) || 0.50;
+            const pricePerCopy = parseFloat(document.getElementById('pricePerCopy').value) || 1.50;
+
+            let totalMinutes = 0;
+            let costByTime = 0;
+            let costByCopies = 0;
+            let totalCharge = 0;
+            let errorMessage = '';
+
+            const startTime = machine.startTime;
+            const endTime = machine.endTime;
+            const numCopies = machine.numCopies;
+            
+            if (startTime && endTime) {
+                if (endTime <= startTime) {
+                    errorMessage = ' ¡Error! La Hora de Fin debe ser posterior a la Hora de Inicio.';
+                } else {
+                    const timeDifferenceMs = endTime.getTime() - startTime.getTime();
+                    totalMinutes = timeDifferenceMs / (1000 * 60);
+                    costByTime = totalMinutes * pricePerMinute;
+                }
+            } else if (machine.status === 'Ocupada' && !startTime) {
+                 // Esto no debería pasar si se inicia correctamente, pero como fallback
+                errorMessage = ' Sesión iniciada sin hora de inicio válida.';
             }
 
             costByCopies = numCopies * pricePerCopy;
@@ -471,4 +940,6 @@
 
     </script>
 </body>
-</html>
+</html>      setInterval(updateAllMachineCharges, 10000); 
+
+    
